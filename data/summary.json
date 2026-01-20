@@ -1,0 +1,43 @@
+{
+  "last_updated": "2026-01-19T23:47:43.687617",
+  "data_range": {
+    "start": "2025-01-19",
+    "end": "2025-07-31",
+    "total_days": 194
+  },
+  "latest_day": {
+    "date": "2025-07-31",
+    "total_incidents": 40,
+    "by_category": {
+      "Larceny Theft": 9,
+      "TOTAL": 40,
+      "Lost Property": 1,
+      "Fraud": 4,
+      "Malicious Mischief": 4,
+      "Motor Vehicle Theft": 1,
+      "Warrant": 3,
+      "Drug Offense": 4,
+      "Assault": 3,
+      "Suspicious Occ": 1,
+      "Robbery": 2,
+      "Other Miscellaneous": 2,
+      "Burglary": 1,
+      "Recovered Vehicle": 1,
+      "Weapons Carrying Etc": 1,
+      "Disorderly Conduct": 1,
+      "Stolen Property": 1,
+      "Traffic Violation Arrest": 1
+    }
+  },
+  "current_anomalies": [
+    {
+      "date": "2025-07-28",
+      "category": "Weapons Offense",
+      "count": 8,
+      "baseline_mean": 2.0,
+      "z_score": 3.5,
+      "percent_above": 306.8
+    }
+  ],
+  "alert_status": "SURGE DETECTED"
+}

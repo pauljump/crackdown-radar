@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SF Crackdown Radar</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            margin-bottom: 40px;
+            border-bottom: 2px solid #ff4444;
+            padding-bottom: 20px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #ff4444;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .status-banner {
+            background: #1a1a1a;
+            border-left: 4px solid #ff4444;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        .status-banner.normal { border-left-color: #44ff44; }
+        .status-banner h2 { margin-bottom: 10px; color: #ff4444; }
+        .status-banner.normal h2 { color: #44ff44; }
+        .status-info { color: #aaa; font-size: 0.9rem; }
+
+        .anomalies {
+            background: #1a1a1a;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        .anomalies h3 {
+            color: #ff4444;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        .anomaly-item {
+            background: #2a2a2a;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #ff4444;
+        }
+        .anomaly-date {
+            color: #ff4444;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .anomaly-category {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .anomaly-stats {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        .stat-highlight {
+            color: #ff4444;
+            font-weight: bold;
+        }
+
+        .chart-section {
+            background: #1a1a1a;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        .chart-section h3 {
+            color: #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .category-card {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .category-name {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        .category-count {
+            font-size: 1.8rem;
+            color: #e0e0e0;
+        }
+
+        footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+            color: #666;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚨 SF Crackdown Radar</h1>
+            <div class="subtitle">Real-time enforcement pattern detection for San Francisco</div>
+        </header>
+
+        <div id="status-banner" class="status-banner">
+            <h2 id="alert-status">Loading...</h2>
+            <div class="status-info" id="status-info"></div>
+        </div>
+
+        <div id="anomalies-section" class="anomalies" style="display: none;">
+            <h3>⚠️ Recent Surges Detected</h3>
+            <div id="anomalies-list"></div>
+        </div>
+
+        <div class="chart-section">
+            <h3>Daily Incidents - Last 90 Days (Arrest-Related Categories)</h3>
+            <canvas id="timeSeriesChart" height="80"></canvas>
+        </div>
+
+        <div class="chart-section">
+            <h3>Latest Day Breakdown</h3>
+            <div id="latest-day-info"></div>
+            <div id="category-grid" class="category-grid"></div>
+        </div>
+
+        <footer>
+            <div id="last-updated"></div>
+            <div>Data source: San Francisco Police Department via DataSF</div>
+            <div>Manual update: run <code>python3 fetch_data.py</code></div>
+        </footer>
+    </div>
+
+    <script>
+        // Load data and render dashboard
+        async function loadData() {
+            try {
+                const [summary, dailyCounts] = await Promise.all([
+                    fetch('data/summary.json').then(r => r.json()),
+                    fetch('data/daily_counts.json').then(r => r.json())
+                ]);
+
+                renderStatusBanner(summary);
+                renderAnomalies(summary.current_anomalies);
+                renderTimeSeriesChart(dailyCounts);
+                renderLatestDay(summary.latest_day);
+                renderFooter(summary);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('alert-status').textContent = 'Error loading data';
+            }
+        }
+
+        function renderStatusBanner(summary) {
+            const banner = document.getElementById('status-banner');
+            const status = document.getElementById('alert-status');
+            const info = document.getElementById('status-info');
+
+            status.textContent = summary.alert_status;
+            info.textContent = `Data range: ${summary.data_range.start} to ${summary.data_range.end} (${summary.data_range.total_days} days)`;
+
+            if (summary.alert_status === 'NORMAL') {
+                banner.classList.add('normal');
+            }
+        }
+
+        function renderAnomalies(anomalies) {
+            if (!anomalies || anomalies.length === 0) return;
+
+            const section = document.getElementById('anomalies-section');
+            const list = document.getElementById('anomalies-list');
+
+            section.style.display = 'block';
+
+            list.innerHTML = anomalies.map(a => `
+                <div class="anomaly-item">
+                    <div class="anomaly-date">${a.date}</div>
+                    <div class="anomaly-category">${a.category}</div>
+                    <div class="anomaly-stats">
+                        <span class="stat-highlight">${a.count} incidents</span>
+                        (${a.percent_above}% above baseline, ${a.z_score}σ deviation)
+                        <br>
+                        90-day baseline: ${a.baseline_mean} incidents/day
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTimeSeriesChart(dailyCounts) {
+            const dates = Object.keys(dailyCounts).sort();
+            const last90Days = dates.slice(-90);
+
+            // Categories to track
+            const categories = [
+                'Drug Offense',
+                'Warrant',
+                'Assault',
+                'Robbery',
+                'Burglary',
+                'Motor Vehicle Theft',
+                'Weapons Offense'
+            ];
+
+            const colors = {
+                'Drug Offense': '#ff4444',
+                'Warrant': '#ff8800',
+                'Assault': '#ffcc00',
+                'Robbery': '#44ff44',
+                'Burglary': '#00ccff',
+                'Motor Vehicle Theft': '#4488ff',
+                'Weapons Offense': '#cc44ff'
+            };
+
+            const datasets = categories.map(category => ({
+                label: category,
+                data: last90Days.map(date => dailyCounts[date][category] || 0),
+                borderColor: colors[category],
+                backgroundColor: colors[category] + '20',
+                borderWidth: 2,
+                tension: 0.1
+            }));
+
+            const ctx = document.getElementById('timeSeriesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: last90Days,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e0e0e0' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#888',
+                                maxTicksLimit: 10
+                            },
+                            grid: { color: '#333' }
+                        },
+                        y: {
+                            ticks: { color: '#888' },
+                            grid: { color: '#333' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderLatestDay(latestDay) {
+            const info = document.getElementById('latest-day-info');
+            const grid = document.getElementById('category-grid');
+
+            info.innerHTML = `
+                <p style="color: #888; margin-bottom: 15px;">
+                    ${latestDay.date} - Total incidents: <strong>${latestDay.total_incidents}</strong>
+                </p>
+            `;
+
+            // Show arrest-related categories
+            const arrestCategories = [
+                'Drug Offense', 'Warrant', 'Assault', 'Robbery', 'Burglary',
+                'Motor Vehicle Theft', 'Weapons Offense', 'Weapons Carrying Etc',
+                'Disorderly Conduct', 'Prostitution'
+            ];
+
+            const cards = arrestCategories
+                .filter(cat => latestDay.by_category[cat])
+                .map(cat => ({
+                    name: cat,
+                    count: latestDay.by_category[cat]
+                }))
+                .sort((a, b) => b.count - a.count);
+
+            grid.innerHTML = cards.map(card => `
+                <div class="category-card">
+                    <div class="category-name">${card.name}</div>
+                    <div class="category-count">${card.count}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderFooter(summary) {
+            const updated = new Date(summary.last_updated);
+            document.getElementById('last-updated').textContent =
+                `Last updated: ${updated.toLocaleString()}`;
+        }
+
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>
