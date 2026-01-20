@@ -239,8 +239,9 @@
                 label: category,
                 data: last90Days.map(date => dailyCounts[date][category] || 0),
                 borderColor: colors[category],
-                backgroundColor: colors[category] + '20',
-                borderWidth: 2,
+                backgroundColor: colors[category],
+                borderWidth: 0,
+                fill: true,
                 tension: 0.1
             }));
 
@@ -265,6 +266,7 @@
                     },
                     scales: {
                         x: {
+                            stacked: true,
                             ticks: {
                                 color: '#888',
                                 maxTicksLimit: 10
@@ -272,6 +274,7 @@
                             grid: { color: '#333' }
                         },
                         y: {
+                            stacked: true,
                             ticks: { color: '#888' },
                             grid: { color: '#333' }
                         }
