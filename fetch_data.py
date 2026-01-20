@@ -33,12 +33,12 @@ def fetch_incidents(days_back=365):
 
     print(f"Fetching incidents since {start_date}...")
 
-    # Fetch data with pagination
+    # Fetch data - order by DESC to get most recent first
     limit = 50000
     params = {
         "$where": f"incident_date >= '{start_date}'",
         "$limit": limit,
-        "$order": "incident_date ASC"
+        "$order": "incident_date DESC"
     }
 
     response = requests.get(API_ENDPOINT, params=params)
